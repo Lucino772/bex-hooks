@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
     from rich.console import Console
 
-    from bex_hooks.exec.spec import UI, Context, Environment, HookFunc
+    from bex_hooks.exec._interface import UI
+    from bex_hooks.exec.spec import Context, Environment, HookFunc
 
 
 def execute(
