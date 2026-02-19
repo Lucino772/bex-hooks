@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from stdlibx.cancel import is_token_cancelled, with_cancel
 from stdlibx.compose import flow
 from stdlibx.option import Nothing, Some, optional_of
-from stdlibx.result import Error, Ok, Result, as_result, result_of
+from stdlibx.result import Error, Ok, Result, as_result, is_err, result_of
 from stdlibx.result import fn as result
 
 from bex_hooks.exec.plugin import load_plugins
@@ -51,13 +51,11 @@ def execute(
     ctx.metadata["arch"] = platform.machine().lower()
 
     cel_ctx = cel.Context()
+    for hook in env.hooks:
+        if is_err(err := _execute_hook(ui, hooks, hook, ctx, cel_ctx)):
+            return Error(err.error)
 
-    return flow(
-        result.collect_all(
-            _execute_hook(ui, hooks, hook, ctx, cel_ctx) for hook in env.hooks
-        ),
-        result.map_(lambda _: ctx),
-    )
+    return Ok(ctx)
 
 
 def _execute_hook(
