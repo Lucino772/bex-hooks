@@ -94,17 +94,18 @@ def run(ctx: typer.Context, command: list[str]):
     console = Console()
 
     token, cancel = with_cancel(default_token())
-    bex_ctx = Context(
-        token,
-        working_dir=os.fspath(ctx.obj["directory"]),
-        metadata={},
-        environ=dict(os.environ),
-    )
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
     with console.status("Executing environment"):
-        exec_result = execute(console, bex_ctx, ctx.obj["env"])
+        exec_result = execute(
+            console,
+            token,
+            os.fspath(ctx.obj["directory"]),
+            {},
+            dict(os.environ),
+            ctx.obj["env"],
+        )
 
     def _format_command(value: Context, cmd: list[str]):
         try:
@@ -155,17 +156,18 @@ def shell(ctx: typer.Context):
     console = Console()
 
     token, cancel = with_cancel(default_token())
-    bex_ctx = Context(
-        token,
-        working_dir=os.fspath(ctx.obj["directory"]),
-        metadata={},
-        environ=dict(os.environ),
-    )
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
     with console.status("Executing environment"):
-        exec_result = execute(console, bex_ctx, ctx.obj["env"])
+        exec_result = execute(
+            console,
+            token,
+            os.fspath(ctx.obj["directory"]),
+            {},
+            dict(os.environ),
+            ctx.obj["env"],
+        )
 
     match exec_result:
         case Ok(value):
@@ -199,17 +201,18 @@ def export(ctx: typer.Context):
     console = Console()
 
     token, cancel = with_cancel(default_token())
-    bex_ctx = Context(
-        token,
-        working_dir=os.fspath(ctx.obj["directory"]),
-        metadata={},
-        environ=dict(os.environ),
-    )
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
     with console.status("Executing environment"):
-        exec_result = execute(console, bex_ctx, ctx.obj["env"])
+        exec_result = execute(
+            console,
+            token,
+            ctx.obj["directory"],
+            {},
+            dict(os.environ),
+            ctx.obj["env"],
+        )
 
     match exec_result:
         case Ok(value):

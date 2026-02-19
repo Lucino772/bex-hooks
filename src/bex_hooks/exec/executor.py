@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import os
 import platform
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cel
 from stdlibx.cancel import is_token_cancelled
@@ -12,20 +13,32 @@ from stdlibx.result import Error, Ok, Result, as_result, result_of
 from stdlibx.result import fn as result
 
 from bex_hooks.exec.plugin import load_plugins
+from bex_hooks.exec.spec import Context
 from bex_hooks.exec.ui import RichUI
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
+    from pathlib import Path
 
     from rich.console import Console
+    from stdlibx.cancel import CancellationToken
 
     from bex_hooks.exec._interface import UI
-    from bex_hooks.exec.spec import Context, Environment, HookFunc
+    from bex_hooks.exec.spec import Environment, HookFunc
 
 
 def execute(
-    console: Console, ctx: Context, env: Environment
+    console: Console,
+    token: CancellationToken,
+    directory: Path,
+    metadata: MutableMapping[str, Any],
+    environ: MutableMapping[str, str],
+    env: Environment,
 ) -> Result[Context, Exception]:
+    ctx = Context(
+        token, working_dir=os.fspath(directory), metadata=metadata, environ=environ
+    )
+
     ui = RichUI(console)
 
     match load_plugins(console, env.config.plugins):
