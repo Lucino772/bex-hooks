@@ -5,7 +5,17 @@ description = "bex-hooks"
 readme = "README.md"
 authors = [ { name = "Lucino772" } ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "typer>=0.16.0",
+    "ruamel-yaml>=0.18.10",
+    "pydantic>=2.11.4",
+    "stdlibx-cancel>=0.1.0,<1",
+    "stdlibx-result>=0.1.0,<1",
+    "stdlibx-option>=0.1.0,<1",
+    "stdlibx-compose>=0.1.0,<1",
+    "shellingham>=1.5.4",
+    "common-expression-language>=0.5.3"
+]
 
 [dependency-groups]
 dev = [
@@ -15,6 +25,9 @@ dev = [
 [build-system]
 requires = ["uv_build>=0.9.28,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "bex_hooks.exec"
 
 [tool.ruff]
 line-length = 88
