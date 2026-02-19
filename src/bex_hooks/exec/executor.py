@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import platform
 import time
 from typing import TYPE_CHECKING, Any, Callable
@@ -17,24 +16,22 @@ from bex_hooks.exec.plugin import plugin_from_entrypoint
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
-    from pathlib import Path
 
     from stdlibx.cancel import CancellationToken
 
     from bex_hooks.exec._interface import UI, HookFunc
-    from bex_hooks.exec.spec import Environment
+    from bex_hooks.exec.config import Environment
 
 
 def execute(
     token: CancellationToken,
     ui: UI,
-    directory: Path,
     metadata: MutableMapping[str, Any],
     environ: MutableMapping[str, str],
     env: Environment,
 ) -> Result[ExecContext, Exception]:
     ctx = ExecContext(
-        token, working_dir=os.fspath(directory), metadata=metadata, environ=environ
+        token, working_dir=str(env.directory), metadata=metadata, environ=environ
     )
 
     match result.collect_all(

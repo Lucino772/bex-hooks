@@ -12,14 +12,13 @@ import shellingham
 import typer
 from rich.console import Console
 from rich.traceback import Traceback
-from ruamel.yaml import YAML
 from stdlibx.cancel import CancellationTokenCancelledError, default_token, with_cancel
 from stdlibx.compose import flow
 from stdlibx.result import Error, Ok, as_result
 from stdlibx.result import fn as result
 
+from bex_hooks.exec.config import load_config
 from bex_hooks.exec.executor import execute
-from bex_hooks.exec.spec import Environment
 from bex_hooks.exec.ui import CliUI
 
 if TYPE_CHECKING:
@@ -70,33 +69,24 @@ def callback(
     ] = None,
 ):
     ctx.ensure_object(dict)
-    _directory = Path(os.getcwd()) if directory is None else directory
-    ctx.obj["directory"] = _directory
+    console = Console()
 
-    if file is None:
-        _candidates = {"bex.yaml", "bex.yml"}
-        file = next(
-            (
-                entry
-                for candidate in _candidates
-                if (entry := _directory / candidate).exists()
-            ),
-            None,
-        )
-    if file is None:
-        typer.echo(f"Could not find bex file in '{_directory}'")
-        ctx.exit(1)
-
-    ctx.obj["file"] = file
-
-    ctx.obj["env"] = Environment.model_validate(
-        YAML(typ="safe").load(Path(file).read_bytes()), from_attributes=False
-    )
+    match load_config(Path(os.getcwd()) if directory is None else directory, file):
+        case Ok(env):
+            ctx.obj["console"] = console
+            ctx.obj["env"] = env
+        case Error(err):
+            console.print("Failed to execute environment", style="red")
+            console.print(
+                Traceback(Traceback.extract(type(err), err, err.__traceback__)),
+                style="dim",
+            )
+            ctx.exit(1)
 
 
 @app.command(context_settings={"allow_interspersed_args": False})
 def run(ctx: typer.Context, command: list[str]):
-    console = Console()
+    console: Console = ctx.obj["console"]
 
     token, cancel = with_cancel(default_token())
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
@@ -106,7 +96,6 @@ def run(ctx: typer.Context, command: list[str]):
         exec_result = execute(
             token,
             CliUI(console),
-            os.fspath(ctx.obj["directory"]),
             {},
             dict(os.environ),
             ctx.obj["env"],
@@ -156,7 +145,7 @@ def run(ctx: typer.Context, command: list[str]):
 
 @app.command()
 def shell(ctx: typer.Context):
-    console = Console()
+    console: Console = ctx.obj["console"]
 
     token, cancel = with_cancel(default_token())
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
@@ -166,7 +155,6 @@ def shell(ctx: typer.Context):
         exec_result = execute(
             token,
             CliUI(console),
-            os.fspath(ctx.obj["directory"]),
             {},
             dict(os.environ),
             ctx.obj["env"],
@@ -201,7 +189,7 @@ def shell(ctx: typer.Context):
 
 @app.command()
 def export(ctx: typer.Context):
-    console = Console()
+    console: Console = ctx.obj["console"]
 
     token, cancel = with_cancel(default_token())
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
@@ -211,7 +199,6 @@ def export(ctx: typer.Context):
         exec_result = execute(
             token,
             CliUI(console),
-            ctx.obj["directory"],
             {},
             dict(os.environ),
             ctx.obj["env"],
@@ -220,7 +207,16 @@ def export(ctx: typer.Context):
     match exec_result:
         case Ok(value):
             console.print("Executed environment successfully", style="green")
-            console.print(value.model_dump_json(indent=4))
+            console.print(
+                json.dumps(
+                    {
+                        "working_dir": value.working_dir,
+                        "metadata": value.metadata,
+                        "environ": value.environ,
+                    },
+                    indent=4,
+                )
+            )
         case Error(CancellationTokenCancelledError()):
             console.print("Process was cancelled", style="red")
             ctx.exit(3)
