@@ -13,10 +13,12 @@ from stdlibx.option import optional_of
 from stdlibx.result import Error, Ok, Result, as_result, result_of
 from stdlibx.result import fn as result
 
-from bex_hooks.exec.spec import BexPluginError, HookFunc
+from bex_hooks.exec.spec import BexPluginError
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+    from bex_hooks.exec._interface import HookFunc
 
 _ENTRYPOINT_PATTERN = re.compile(
     r"(?P<module>[\w.]+)\s*"

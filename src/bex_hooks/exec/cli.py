@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import shellingham
 import typer
@@ -18,7 +19,10 @@ from stdlibx.result import Error, Ok, as_result
 from stdlibx.result import fn as result
 
 from bex_hooks.exec.executor import execute
-from bex_hooks.exec.spec import Context, Environment
+from bex_hooks.exec.spec import Environment
+
+if TYPE_CHECKING:
+    from bex_hooks.exec._interface import Context
 
 
 class _FormatCommandError(Exception):
@@ -138,9 +142,7 @@ def run(ctx: typer.Context, command: list[str]):
                 f"Failed to prepare command, '{err.key}' is not in metadata",
                 style="red",
             )
-            console.print(
-                err.value.model_dump_json(indent=4, include={"metadata"}), style="red"
-            )
+            console.print(json.dumps(err.value.metadata, indent=4), style="red")
             ctx.exit(4)
         case Error(err):
             console.print("Failed to execute environment", style="red")

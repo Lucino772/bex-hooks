@@ -3,17 +3,17 @@ from __future__ import annotations
 import os
 import platform
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import cel
-from stdlibx.cancel import is_token_cancelled
+from pydantic import BaseModel
+from stdlibx.cancel import is_token_cancelled, with_cancel
 from stdlibx.compose import flow
 from stdlibx.option import Nothing, Some, optional_of
 from stdlibx.result import Error, Ok, Result, as_result, result_of
 from stdlibx.result import fn as result
 
 from bex_hooks.exec.plugin import load_plugins
-from bex_hooks.exec.spec import Context
 from bex_hooks.exec.ui import RichUI
 
 if TYPE_CHECKING:
@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from rich.console import Console
     from stdlibx.cancel import CancellationToken
 
-    from bex_hooks.exec._interface import UI
-    from bex_hooks.exec.spec import Environment, HookFunc
+    from bex_hooks.exec._interface import UI, HookFunc
+    from bex_hooks.exec.spec import Environment
 
 
 def execute(
@@ -34,8 +34,8 @@ def execute(
     metadata: MutableMapping[str, Any],
     environ: MutableMapping[str, str],
     env: Environment,
-) -> Result[Context, Exception]:
-    ctx = Context(
+) -> Result[ExecContext, Exception]:
+    ctx = ExecContext(
         token, working_dir=os.fspath(directory), metadata=metadata, environ=environ
     )
 
@@ -69,7 +69,7 @@ def _execute_hook(
     console: Console,
     hooks: Mapping[str, HookFunc],
     hook: Environment.Hook,
-    ctx: Context,
+    ctx: ExecContext,
     cel_ctx: cel.Context,
     ui: UI,
 ) -> Result[None, Exception]:
@@ -114,3 +114,31 @@ def _execute_hook(
         console.print(f"[+] Hook ran successfully: '{hook.id}' ({duration:.2f}s)")
 
     return Ok(None)
+
+
+class ExecContext(BaseModel):
+    working_dir: str
+    metadata: dict[str, Any]
+    environ: dict[str, str]
+
+    def __init__(self, token: CancellationToken, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.__token, self.__cancel = with_cancel(token)
+
+    def register(self, fn: Callable[[Exception], None]) -> None:
+        return self.__token.register(fn)
+
+    def is_cancelled(self) -> bool:
+        return self.__token.is_cancelled()
+
+    def get_error(self) -> Exception | None:
+        return self.__token.get_error()
+
+    def raise_if_cancelled(self):
+        self.__token.raise_if_cancelled()
+
+    def wait(self, timeout: float | None) -> Exception | None:
+        return self.__token.wait(timeout)
+
+    def cancel(self) -> None:
+        return self.__cancel()

@@ -11,8 +11,12 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from types import TracebackType
+
+
+class HookFunc(Protocol):
+    def __call__(self, ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None: ...
 
 
 class Context(Protocol):
