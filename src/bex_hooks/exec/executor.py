@@ -13,7 +13,7 @@ from stdlibx.option import Nothing, Some, optional_of
 from stdlibx.result import Error, Ok, Result, as_result, is_err, result_of
 from stdlibx.result import fn as result
 
-from bex_hooks.exec.plugin import load_plugins
+from bex_hooks.exec.plugin import plugin_from_entrypoint
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
@@ -36,7 +36,17 @@ def execute(
     ctx = ExecContext(
         token, working_dir=os.fspath(directory), metadata=metadata, environ=environ
     )
-    match load_plugins(ui, env.config.plugins):
+
+    match result.collect_all(
+        flow(
+            plugin_from_entrypoint(_plugin),
+            result.inspect(lambda _: ui.print(f"[+] Imported plugin '{_plugin}'")),
+            result.inspect_err(
+                lambda _: ui.print(f"[+] Failed to import plugin '{_plugin}'")
+            ),
+        )
+        for _plugin in env.config.plugins
+    ):
         case Ok(value):
             plugins = list(value)
         case Error(_) as err:

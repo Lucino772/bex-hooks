@@ -15,7 +15,7 @@ from stdlibx.result import fn as result
 from bex_hooks.exec.spec import BexPluginError
 
 if TYPE_CHECKING:
-    from bex_hooks.exec._interface import UI, HookFunc
+    from bex_hooks.exec._interface import HookFunc
 
 _ENTRYPOINT_PATTERN = re.compile(
     r"(?P<module>[\w.]+)\s*"
@@ -30,20 +30,7 @@ class PluginInfo:
     hooks: Mapping[str, HookFunc]
 
 
-def load_plugins(ui: UI, plugins: list[str]):
-    return result.collect_all(
-        flow(
-            _plugin_from_entrypoint(_plugin),
-            result.inspect(lambda _: ui.print(f"[+] Imported plugin '{_plugin}'")),
-            result.inspect_err(
-                lambda _: ui.print(f"[+] Failed to import plugin '{_plugin}'")
-            ),
-        )
-        for _plugin in plugins
-    ).apply(result.map_(list))
-
-
-def _plugin_from_entrypoint(entrypoint: str):
+def plugin_from_entrypoint(entrypoint: str):
     def _map_errors(error: Exception):
         match error:
             case ImportError():
