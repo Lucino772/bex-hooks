@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -39,12 +38,6 @@ class Environment(BaseModel):
 
     config: Config
     hooks: list[Hook] = Field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class PluginInfo:
-    name: str
-    hooks: Mapping[str, HookFunc]
 
 
 class Context(BaseModel):

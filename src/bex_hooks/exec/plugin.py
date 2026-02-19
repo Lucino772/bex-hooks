@@ -3,7 +3,8 @@ from __future__ import annotations
 import functools
 import importlib
 import re
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Mapping
 
 from rich.console import Console
 from stdlibx.compose import flow, pipe
@@ -12,7 +13,7 @@ from stdlibx.option import optional_of
 from stdlibx.result import Error, Ok, Result, as_result, result_of
 from stdlibx.result import fn as result
 
-from bex_hooks.exec.spec import BexPluginError, HookFunc, PluginInfo
+from bex_hooks.exec.spec import BexPluginError, HookFunc
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -22,6 +23,12 @@ _ENTRYPOINT_PATTERN = re.compile(
     r"(:\s*(?P<attr>[\w.]+)\s*)?"
     r"((?P<extras>\[.*\])\s*)?$"
 )
+
+
+@dataclass(frozen=True)
+class PluginInfo:
+    name: str
+    hooks: Mapping[str, HookFunc]
 
 
 def load_plugins(console: Console, plugins: list[str]):
