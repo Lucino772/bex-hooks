@@ -80,7 +80,7 @@ dev = [{ name = "ruff", specifier = ">=0.15.1" }]
 [[package]]
 name = "bex-hooks-files"
 version = "0.1.0"
-source = { editable = "hooks/bex-hooks/files" }
+source = { editable = "hooks/bex-hooks-python" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -95,7 +95,7 @@ requires-dist = [
 [[package]]
 name = "bex-hooks-python"
 version = "0.1.0"
-source = { editable = "hooks/bex-hooks/python" }
+source = { editable = "hooks/bex-hooks-files" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
