@@ -59,6 +59,8 @@ After the environment is bootstrapped, the executor reads the YAML body (`config
 
 ## CLI
 
+This executor exposes a CLI.
+
 ### Global Options
 
 The following options are defined by the executor. They are set internally by the bootstrapper (via environment variables) and are not intended for manual use.
@@ -68,13 +70,11 @@ The following options are defined by the executor. They are set internally by th
 | `-f`, `--file`      | `BEX_FILE`           | Path to the workflow file.                                    |
 | `-C`, `--directory` | `BEX_DIRECTORY`      | Working directory used to resolve the workflow configuration. |
 
----
-
 ### Commands
 
 | Command  | Usage                            | Description                                                                                                                                 |
 | -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run`    | `bex run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment. Arguments after `--` are forwarded to the command. |
+| `run`    | `bex run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment.                                                    |
 | `shell`  | `bex shell`                      | Executes the workflow, then opens an interactive shell using the resulting environment.                                                     |
 | `export` | `bex export`                     | Executes the workflow and prints the resulting context as JSON (`working_dir`, `metadata`, `environ`).                                      |
 
