@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Mapping
 
-from rich.console import Console
 from stdlibx.compose import flow, pipe
 from stdlibx.option import fn as option
 from stdlibx.option import optional_of
@@ -16,9 +15,7 @@ from stdlibx.result import fn as result
 from bex_hooks.exec.spec import BexPluginError
 
 if TYPE_CHECKING:
-    from rich.console import Console
-
-    from bex_hooks.exec._interface import HookFunc
+    from bex_hooks.exec._interface import UI, HookFunc
 
 _ENTRYPOINT_PATTERN = re.compile(
     r"(?P<module>[\w.]+)\s*"
@@ -33,13 +30,13 @@ class PluginInfo:
     hooks: Mapping[str, HookFunc]
 
 
-def load_plugins(console: Console, plugins: list[str]):
+def load_plugins(ui: UI, plugins: list[str]):
     return result.collect_all(
         flow(
             _plugin_from_entrypoint(_plugin),
-            result.inspect(lambda _: console.print(f"[+] Imported plugin '{_plugin}'")),
+            result.inspect(lambda _: ui.print(f"[+] Imported plugin '{_plugin}'")),
             result.inspect_err(
-                lambda _: console.print(f"[+] Failed to import plugin '{_plugin}'")
+                lambda _: ui.print(f"[+] Failed to import plugin '{_plugin}'")
             ),
         )
         for _plugin in plugins

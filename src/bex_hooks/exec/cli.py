@@ -20,6 +20,7 @@ from stdlibx.result import fn as result
 
 from bex_hooks.exec.executor import execute
 from bex_hooks.exec.spec import Environment
+from bex_hooks.exec.ui import CliUI
 
 if TYPE_CHECKING:
     from bex_hooks.exec._interface import Context
@@ -103,8 +104,8 @@ def run(ctx: typer.Context, command: list[str]):
 
     with console.status("Executing environment"):
         exec_result = execute(
-            console,
             token,
+            CliUI(console),
             os.fspath(ctx.obj["directory"]),
             {},
             dict(os.environ),
@@ -163,8 +164,8 @@ def shell(ctx: typer.Context):
 
     with console.status("Executing environment"):
         exec_result = execute(
-            console,
             token,
+            CliUI(console),
             os.fspath(ctx.obj["directory"]),
             {},
             dict(os.environ),
@@ -208,8 +209,8 @@ def export(ctx: typer.Context):
 
     with console.status("Executing environment"):
         exec_result = execute(
-            console,
             token,
+            CliUI(console),
             ctx.obj["directory"],
             {},
             dict(os.environ),

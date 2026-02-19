@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 ProgressToken = NewType("ProgressToken", TaskID)
 
 
-class RichUI:
+class CliUI:
     __slots__ = ("__console",)
 
     def __init__(self, console: Console, *, log_level: int = logging.WARNING):
