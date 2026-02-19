@@ -8,15 +8,15 @@ Sets up a Python virtual environment for a specified version and synchronizes it
 
 ### Arguments
 
-| Name | Type | Default | Description |
-|---|---|---:|---|
-| `version` | `str` | *(required)* | Python version to provision (e.g. `">=3.11,<3.12"`) |
-| `uv` | `str \| None` | `None` | Version of `uv` to use |
-| `requirements` | `str` | `""` | Inline requirements (e.g. `"requests==2.32.0"`). |
-| `requirements_file` | `list[str]` | `[]` | One or more requirements file paths. |
-| `activate_env` | `bool` | `False` | If `True`, activates the environment for subsequent steps. |
-| `set_python_path` | `bool` | `False` | If `True`, sets `PYTHONPATH` to the virtual environment. |
-| `inexact` | `bool` | `False` | If `True`, tells `uv` not to remove dependencies that are present but not declared in the requirements. |
+| Name                | Type          |    Default   | Description                                                                                             |
+|---------------------|---------------|:------------:|---------------------------------------------------------------------------------------------------------|
+| `version`           | `str`         | *(required)* | Python version to provision (e.g. `">=3.11,<3.12"`)                                                     |
+| `uv`                | `str \| None` | `None`       | Version of `uv` to use                                                                                  |
+| `requirements`      | `str`         | `""`         | Inline requirements (e.g. `"requests==2.32.0"`).                                                        |
+| `requirements_file` | `list[str]`   | `[]`         | One or more requirements file paths.                                                                    |
+| `activate_env`      | `bool`        | `False`      | If `True`, activates the environment for subsequent steps.                                              |
+| `set_python_path`   | `bool`        | `False`      | If `True`, sets `PYTHONPATH` to the virtual environment.                                                |
+| `inexact`           | `bool`        | `False`      | If `True`, tells `uv` not to remove dependencies that are present but not declared in the requirements. |
 
 ### Example
 
@@ -29,7 +29,6 @@ hooks:
       - requirements.txt
     requirements: |
       requests==2.32.0
-      requirements_file:
     activate_env: true
     inexact: true
 ```
