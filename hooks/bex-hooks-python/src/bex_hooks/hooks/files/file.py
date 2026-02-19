@@ -14,10 +14,12 @@ from bex_hooks.hooks.files.utils import EtaCalculator, download_file
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from bex_hooks.hooks.files._interface import UI, Context
+    from bex_hooks.hooks.files._interface import UI, CancellationToken, ContextLike
 
 
-def archive(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
+def archive(
+    token: CancellationToken, args: Mapping[str, Any], ctx: ContextLike, *, ui: UI
+) -> ContextLike:
     class _Args(BaseModel):
         source: str
         source_hash: str
@@ -47,7 +49,7 @@ def archive(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
     else:
         eta = EtaCalculator()
         filename = download_file(
-            ctx,
+            token,
             data.source,
             report_hook=lambda _bytes, total: ui.log(
                 "Downloading file ({:.2f}) [{}]".format(
@@ -80,7 +82,7 @@ def archive(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
 
                 _members = archive.infolist()
                 for idx, member in enumerate(_members, start=1):
-                    ctx.raise_if_cancelled()
+                    token.raise_if_cancelled()
 
                     member_path = Path(member.filename)
                     relative_path = (
@@ -110,8 +112,12 @@ def archive(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
         elif _path.exists():
             _path.unlink()
 
+    return ctx
 
-def download(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
+
+def download(
+    token: CancellationToken, args: Mapping[str, Any], ctx: ContextLike, *, ui: UI
+) -> ContextLike:
     class _Args(BaseModel):
         source: str
         source_hash: str
@@ -135,7 +141,7 @@ def download(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
         and hashlib.new(hash_algo, target.read_bytes()).hexdigest() == hash_hex
     ):
         ui.log("File already exists {}".format(target))
-        return
+        return ctx
 
     cached_file = (
         Path(ctx.working_dir) / ".bex" / "cache" / "files" / hash_algo / hash_hex
@@ -149,7 +155,7 @@ def download(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
                 "Downloading {}".format(target.relative_to(ctx.working_dir))
             )
             filename = download_file(
-                ctx,
+                token,
                 data.source,
                 report_hook=lambda _bytes, total: pb.update(
                     task_id, completed=_bytes, total=total if total > 0 else None
@@ -171,8 +177,12 @@ def download(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
         elif _path.exists():
             _path.unlink()
 
+    return ctx
 
-def inline(ctx: Context, args: Mapping[str, Any], *, ui: UI):
+
+def inline(
+    token: CancellationToken, args: Mapping[str, Any], ctx: ContextLike, *, ui: UI
+) -> ContextLike:
     class _Args(BaseModel):
         content: str
         target: str
@@ -196,3 +206,4 @@ def inline(ctx: Context, args: Mapping[str, Any], *, ui: UI):
     )
 
     target.write_text(content)
+    return ctx

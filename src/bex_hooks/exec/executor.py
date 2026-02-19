@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import functools
 import platform
 import time
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import cel
-from pydantic import BaseModel
-from stdlibx.cancel import is_token_cancelled, with_cancel
+from stdlibx.cancel import is_token_cancelled
 from stdlibx.compose import flow
 from stdlibx.option import Nothing, Some, optional_of
-from stdlibx.result import Error, Ok, Result, as_result, is_err, result_of
+from stdlibx.result import Error, Ok, Result, as_result, result_of
 from stdlibx.result import fn as result
 
+from bex_hooks.exec._interface import Context
 from bex_hooks.exec.plugin import plugin_from_entrypoint
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
     from stdlibx.cancel import CancellationToken
 
-    from bex_hooks.exec._interface import UI, HookFunc
+    from bex_hooks.exec._interface import UI, ContextLike, HookFunc
     from bex_hooks.exec.config import Environment
 
 
@@ -29,11 +30,7 @@ def execute(
     metadata: MutableMapping[str, Any],
     environ: MutableMapping[str, str],
     env: Environment,
-) -> Result[ExecContext, Exception]:
-    ctx = ExecContext(
-        token, working_dir=str(env.directory), metadata=metadata, environ=environ
-    )
-
+) -> Result[ContextLike, Exception]:
     match result.collect_all(
         flow(
             plugin_from_entrypoint(_plugin),
@@ -54,24 +51,37 @@ def execute(
         hooks.update(plugin.hooks)
         ui.print(f"[+] Loaded hooks from plugin '{plugin.name}'")
 
-    ctx.metadata["platform"] = platform.system().lower()
-    ctx.metadata["arch"] = platform.machine().lower()
-
     cel_ctx = cel.Context()
-    for hook in env.hooks:
-        if is_err(err := _execute_hook(ui, hooks, hook, ctx, cel_ctx)):
-            return Error(err.error)
-
-    return Ok(ctx)
+    return functools.reduce(
+        lambda prev, hook: flow(
+            prev,
+            result.and_then(
+                lambda ctx_: _execute_hook(token, ui, hooks, hook, ctx_, cel_ctx)
+            ),
+        ),
+        env.hooks,
+        Ok["ContextLike", Exception](
+            Context(
+                working_dir=str(env.directory),
+                metadata={
+                    **metadata,
+                    "platform": platform.system().lower(),
+                    "arch": platform.machine().lower(),
+                },
+                environ=environ,
+            )
+        ),
+    )
 
 
 def _execute_hook(
+    token: CancellationToken,
     ui: UI,
     hooks: Mapping[str, HookFunc],
     hook: Environment.Hook,
-    ctx: ExecContext,
+    ctx: ContextLike,
     cel_ctx: cel.Context,
-) -> Result[None, Exception]:
+) -> Result[ContextLike, Exception]:
     match flow(
         result_of(lambda: cel_ctx.update({**ctx.metadata, "env": ctx.environ})),
         result.and_then(
@@ -85,12 +95,12 @@ def _execute_hook(
     ):
         case Ok(skip_hook) if skip_hook is True:
             ui.print(f"[-] Hook skipped: '{hook.id}'")
-            return Ok(None)
+            return Ok(ctx)
         case Error(_) as err:
             return Error(err.error)
 
-    if is_token_cancelled(ctx):
-        return Error(ctx.get_error())
+    if is_token_cancelled(token):
+        return Error(token.get_error())
 
     match optional_of(hooks.get, hook.id):
         case Some(func):
@@ -101,7 +111,7 @@ def _execute_hook(
     ui.print(f"[+] Running hook '{hook.id}'")
     start_time = time.perf_counter()
     try:
-        hook_func(ctx, hook.__pydantic_extra__, ui=ui)
+        hook_result = hook_func(token, hook.__pydantic_extra__, ctx, ui=ui)
     except Exception as e:
         duration = time.perf_counter() - start_time
         ui.print(
@@ -111,33 +121,4 @@ def _execute_hook(
     else:
         duration = time.perf_counter() - start_time
         ui.print(f"[+] Hook ran successfully: '{hook.id}' ({duration:.2f}s)")
-
-    return Ok(None)
-
-
-class ExecContext(BaseModel):
-    working_dir: str
-    metadata: dict[str, Any]
-    environ: dict[str, str]
-
-    def __init__(self, token: CancellationToken, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.__token, self.__cancel = with_cancel(token)
-
-    def register(self, fn: Callable[[Exception], None]) -> None:
-        return self.__token.register(fn)
-
-    def is_cancelled(self) -> bool:
-        return self.__token.is_cancelled()
-
-    def get_error(self) -> Exception | None:
-        return self.__token.get_error()
-
-    def raise_if_cancelled(self):
-        self.__token.raise_if_cancelled()
-
-    def wait(self, timeout: float | None) -> Exception | None:
-        return self.__token.wait(timeout)
-
-    def cancel(self) -> None:
-        return self.__cancel()
+        return Ok(hook_result)

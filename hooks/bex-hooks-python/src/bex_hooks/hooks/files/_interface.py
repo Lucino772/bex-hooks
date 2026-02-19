@@ -1,25 +1,49 @@
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    NoReturn,
-    Protocol,
-    Self,
-    TypeGuard,
-)
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, Protocol, Self, TypeGuard
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from types import TracebackType
 
 
-class Context(Protocol):
+# --- Helpers ---
+@dataclass(frozen=True)
+class Context:
     working_dir: str
-    metadata: dict[str, Any]
-    environ: dict[str, str]
+    metadata: Mapping[str, Any]
+    environ: Mapping[str, str]
 
+
+def is_token_cancelled(
+    token: CancellationToken,
+) -> TypeGuard[CancelledCancellationToken]:
+    return token.is_cancelled()
+
+
+# --- Typing ---
+class HookFunc(Protocol):
+    def __call__(
+        self,
+        token: CancellationToken,
+        args: Mapping[str, Any],
+        ctx: ContextLike,
+        *,
+        ui: UI,
+    ) -> ContextLike: ...
+
+
+class ContextLike(Protocol):
+    @property
+    def working_dir(self) -> str: ...
+    @property
+    def metadata(self) -> Mapping[str, Any]: ...
+    @property
+    def environ(self) -> Mapping[str, str]: ...
+
+
+class CancellationToken(Protocol):
     def register(self, fn: Callable[[Exception], None]) -> None: ...
     def is_cancelled(self) -> bool: ...
     def get_error(self) -> Exception | None: ...
@@ -27,7 +51,7 @@ class Context(Protocol):
     def wait(self, timeout: float | None) -> Exception | None: ...
 
 
-class CancelledContext(Context, Protocol):
+class CancelledCancellationToken(CancellationToken, Protocol):
     def is_cancelled(self) -> Literal[True]: ...
     def get_error(self) -> Exception: ...
     def raise_if_cancelled(self) -> NoReturn: ...
@@ -54,7 +78,6 @@ class UIScope(Protocol):
 
 class UIProgress(Protocol):
     def add_task(self, description: str, /, *, total: float | None = None) -> Any: ...
-
     def update(
         self,
         token: Any,
@@ -65,18 +88,11 @@ class UIProgress(Protocol):
         completed: float | None = None,
         advance: float | None = None,
     ) -> None: ...
-
     def advance(self, token: Any, advance: float) -> None: ...
-
     def __enter__(self) -> Self: ...
-
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None: ...
-
-
-def is_context_cancelled(ctx: Context) -> TypeGuard[CancelledContext]:
-    return ctx.is_cancelled()

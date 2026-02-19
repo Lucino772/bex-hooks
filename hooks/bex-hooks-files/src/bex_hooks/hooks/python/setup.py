@@ -19,6 +19,7 @@ from urllib.parse import urljoin
 import httpx
 from pydantic import BaseModel, Field
 
+from bex_hooks.hooks.python._interface import Context
 from bex_hooks.hooks.python.utils import (
     append_path,
     download_file,
@@ -29,7 +30,7 @@ from bex_hooks.hooks.python.utils import (
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from bex_hooks.hooks.python._interface import UI, Context
+    from bex_hooks.hooks.python._interface import UI, CancellationToken, ContextLike
 
 _UV_RELEASES_URL = "https://api.github.com/repos/astral-sh/uv/releases"
 _UV_DOWNLOAD_URL = "https://github.com/astral-sh/uv/releases/download/{version}/"
@@ -45,7 +46,9 @@ class _Args(BaseModel):
     inexact: bool = Field(default=False)
 
 
-def setup_python(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
+def setup_python(
+    token: CancellationToken, args: Mapping[str, Any], ctx: ContextLike, *, ui: UI
+) -> ContextLike:
     data = _Args.model_validate(args, from_attributes=False)
 
     bex_dir = Path(ctx.working_dir) / ".bex"
@@ -55,7 +58,7 @@ def setup_python(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
     with ui.progress() as pb:
         task_id = pb.add_task("Downloading uv")
         uv = _download_uv(
-            ctx,
+            token,
             lambda curr, total: pb.update(task_id, total=total, completed=curr),
             bex_dir / "cache" / "uv",
             version=data.uv_version,
@@ -85,6 +88,7 @@ def setup_python(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
         ui.log("Discovered requirement file: {}".format(file))
 
     python_bin = _create_isolated_environment(
+        token,
         ctx,
         root_dir,
         uv,
@@ -101,28 +105,33 @@ def setup_python(ctx: Context, args: Mapping[str, Any], *, ui: UI) -> None:
     # Configure PYTHONPATH environment variables
     _python_path = _get_python_path(python_bin)
 
-    ctx.metadata["python_bin"] = str(python_bin)
+    _metadata = dict(ctx.metadata)
+    _environ = dict(ctx.environ)
+    _metadata["python_bin"] = str(python_bin)
 
     venv_dir = root_dir / ".venv"
     if data.activate_env is True:
-        ctx.environ["VIRTUAL_ENV"] = str(venv_dir)
-        ctx.environ["VENV_DIR"] = str(venv_dir)
-        ctx.environ["PATH"] = prepend_path(
-            ctx.environ["PATH"],
+        _environ["VIRTUAL_ENV"] = str(venv_dir)
+        _environ["VENV_DIR"] = str(venv_dir)
+        _environ["PATH"] = prepend_path(
+            _environ["PATH"],
             str(venv_dir / ("Scripts" if platform.system() == "Windows" else "bin")),
         )
-        ctx.environ["VIRTUAL_ENV_PROMPT"] = Path(ctx.working_dir).name
-        if "PYTHONHOME" in ctx.environ:
-            del ctx.environ["PYTHONHOME"]
+        _environ["VIRTUAL_ENV_PROMPT"] = Path(ctx.working_dir).name
+        if "PYTHONHOME" in _environ:
+            del _environ["PYTHONHOME"]
 
     if data.set_python_path is True and _python_path:
-        ctx.environ["PYTHONPATH"] = append_path(
-            ctx.environ.get("PYTHONPATH", ""), str(Path(_python_path))
+        _environ["PYTHONPATH"] = append_path(
+            _environ.get("PYTHONPATH", ""), str(Path(_python_path))
         )
+
+    return Context(ctx.working_dir, _metadata, _environ)
 
 
 def _create_isolated_environment(
-    ctx: Context,
+    token: CancellationToken,
+    ctx: ContextLike,
     root_dir: Path,
     uv_bin: Path,
     python_specifier: str,
@@ -141,7 +150,7 @@ def _create_isolated_environment(
     )
 
     create_venc_rc = wait_process(
-        ctx,
+        token,
         [
             str(uv_bin),
             "venv",
@@ -176,7 +185,7 @@ def _create_isolated_environment(
     )
 
     lock_pip_requirements_rc = wait_process(
-        ctx,
+        token,
         [
             str(uv_bin),
             "pip",
@@ -194,7 +203,7 @@ def _create_isolated_environment(
         return None
 
     sync_pip_requirements_rc = wait_process(
-        ctx,
+        token,
         [
             str(uv_bin),
             "pip",
@@ -216,7 +225,7 @@ def _create_isolated_environment(
 
 
 def _download_uv(
-    ctx: Context,
+    token: CancellationToken,
     report_hook: Callable[[int, int], None],
     directory: Path,
     *,
@@ -237,7 +246,7 @@ def _download_uv(
         return None
 
     temp_filename = download_file(
-        ctx,
+        token,
         urljoin(_UV_DOWNLOAD_URL.format(version=version), filename),
         report_hook=report_hook,
     )

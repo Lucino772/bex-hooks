@@ -22,11 +22,11 @@ from bex_hooks.exec.executor import execute
 from bex_hooks.exec.ui import CliUI
 
 if TYPE_CHECKING:
-    from bex_hooks.exec._interface import Context
+    from bex_hooks.exec._interface import ContextLike
 
 
 class _FormatCommandError(Exception):
-    def __init__(self, key: str, value: Context):
+    def __init__(self, key: str, value: ContextLike):
         super().__init__()
         self.key = key
         self.value = value
@@ -101,7 +101,7 @@ def run(ctx: typer.Context, command: list[str]):
             ctx.obj["env"],
         )
 
-    def _format_command(value: Context, cmd: list[str]):
+    def _format_command(value: ContextLike, cmd: list[str]):
         try:
             return [item.format_map(value.metadata) for item in cmd]
         except KeyError as err:

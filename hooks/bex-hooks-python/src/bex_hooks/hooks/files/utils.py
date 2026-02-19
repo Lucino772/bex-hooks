@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from bex_hooks.hooks.files._interface import is_context_cancelled
+from bex_hooks.hooks.files._interface import is_token_cancelled
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from bex_hooks.hooks.files._interface import Context
+    from bex_hooks.hooks.files._interface import CancellationToken
 
 
 def download_file(
-    ctx: Context,
+    token: CancellationToken,
     source: str,
     *,
     chunk_size: int | None = None,
@@ -37,15 +37,15 @@ def download_file(
 
         chunk_iter = response.iter_bytes(chunk_size)
         with contextlib.suppress(StopIteration):
-            while ctx.is_cancelled() is False:
+            while token.is_cancelled() is False:
                 dest.write(next(chunk_iter))
                 if callable(report_hook):
                     report_hook(response.num_bytes_downloaded, _content_len)
 
         _path = Path(dest.name)
-        if is_context_cancelled(ctx) and _path.exists():
+        if is_token_cancelled(token) and _path.exists():
             _path.unlink()
-            raise ctx.get_error()
+            raise token.get_error()
 
         return _path
 
