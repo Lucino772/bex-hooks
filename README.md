@@ -1,6 +1,6 @@
 # bex-hooks
 
-**bex-hooks** is a configuration-driven executor implementation for [**bex**](https://github.com/Lucino772/bex) that loads a workflow definition from a YAML file, resolves configured plugins, and executes hooks in order within an isolated environment bootstrapped by `bex`.
+**bex-hooks** is a configuration-driven entrypoint for [**bex**](https://github.com/Lucino772/bex) that loads a workflow definition from a YAML file, resolves configured plugins, and executes hooks in order within an isolated environment bootstrapped by `bex`.
 
 ## Content
 
@@ -17,8 +17,7 @@
 A workflow is defined in a single YAML file containing:
 
 1. A bootstrap header
-2. The executor configuration
-
+2. The entrypoint configuration
 
 ```yaml
 # /// bootstrap
@@ -48,22 +47,22 @@ hooks:
       requests>=2,<3
 ```
 
-The bootstrap header is processed by **`bex`**, not by this executor.
+The bootstrap header is processed by **`bex`**, not by this entrypoint.
 
-For this executor, the bootstrap section must:
+For this entrypoint, the bootstrap section must:
 
 * Include `bex-hooks` in `requirements`
 * Set `entrypoint` to `bex_hooks.exec:main`
 
-After the environment is bootstrapped, the executor reads the YAML body (`config` and `hooks`) and executes the defined hooks in declaration order.
+After the environment is bootstrapped, the entrypoint reads the YAML body (`config` and `hooks`) and executes the defined hooks in declaration order.
 
 ## CLI
 
-This executor exposes a CLI.
+This entrypoint exposes a CLI.
 
 ### Global Options
 
-The following options are defined by the executor. They are set internally by the bootstrapper (via environment variables) and are not intended for manual use.
+The following options are defined by the entrypoint. They are set internally by the bootstrapper (via environment variables) and are not intended for manual use.
 
 | Flags               | Environment Variable | Description                                                   |
 | ------------------- | -------------------- | ------------------------------------------------------------- |
@@ -72,13 +71,13 @@ The following options are defined by the executor. They are set internally by th
 
 ### Commands
 
-| Command  | Usage                            | Description                                                                                                                                 |
-| -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `run`    | `bex run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment.                                                    |
-| `shell`  | `bex shell`                      | Executes the workflow, then opens an interactive shell using the resulting environment.                                                     |
-| `export` | `bex export`                     | Executes the workflow and prints the resulting context as JSON (`working_dir`, `metadata`, `environ`).                                      |
+| Command  | Usage                            | Description                                                                                            |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `run`    | `bex run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment.               |
+| `shell`  | `bex shell`                      | Executes the workflow, then opens an interactive shell using the resulting environment.                |
+| `export` | `bex export`                     | Executes the workflow and prints the resulting context as JSON (`working_dir`, `metadata`, `environ`). |
 
-Command arguments for `run` support templating using metadata produced by the executor:
+Command arguments for `run` support templating using metadata produced by the entrypoint:
 
 ```bash
 bex run -- echo "{working_dir}"
@@ -86,7 +85,7 @@ bex run -- echo "{working_dir}"
 
 ## Configuration
 
-The executor expects the following YAML structure:
+The entrypoint expects the following YAML structure:
 
 ```yaml
 config:
@@ -101,7 +100,7 @@ hooks:
 
 ### `config`
 
-General executor configuration.
+General entrypoint configuration.
 
 | Field     | Type        | Default | Description                                                       |
 | --------- | ----------- | :-----: | ----------------------------------------------------------------- |
