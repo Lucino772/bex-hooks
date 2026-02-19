@@ -29,6 +29,11 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "bex_hooks.exec"
 
+[tool.uv.workspace]
+members = [
+    "hooks/bex-hooks/files",
+]
+
 [tool.ruff]
 line-length = 88
 indent-width = 4
