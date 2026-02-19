@@ -1,0 +1,38 @@
+[project]
+name = "bex-hooks"
+version = "0.1.0"
+description = "bex-hooks"
+readme = "README.md"
+authors = [ { name = "Lucino772" } ]
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.28,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80
+
+[tool.ruff.lint.isort]
+known-first-party = ["bex_hooks"]
+
+[tool.ruff.lint]
+extend-select = ["I", "RUF022", "RUF023", "W505", "TC", "FA", "C4", "PYI", "COM818"]
+extend-ignore = ["D203", "D213"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 80
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
