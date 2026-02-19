@@ -1,7 +1,7 @@
 [project]
-name = "bex-hooks-files"
+name = "bex-hooks-python"
 version = "0.1.0"
-description = "bex-hooks-files"
+description = "bex-hooks-python"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
@@ -10,10 +10,13 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.11.4",
+    "stdlibx-compose>=0.1.0,<1",
+    "stdlibx-option>=0.1.0,<1",
+    "stdlibx-result>=0.1.0,<1",
 ]
 
 [tool.uv.build-backend]
-module-name = "bex_hooks.hooks.files"
+module-name = "bex_hooks.hooks.python"
 
 [build-system]
 requires = ["uv_build>=0.9.28,<0.10.0"]
