@@ -3,6 +3,8 @@ name = "bex-hooks-files"
 version = "0.1.0"
 description = "bex-hooks-files"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 authors = [ { name = "Lucino772" } ]
 requires-python = ">=3.11"
 dependencies = [
