@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 members = [
     "bex-hooks",
     "bex-hooks-files",
+    "bex-hooks-python",
 ]
 
 [[package]]
@@ -89,6 +90,27 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pydantic", specifier = ">=2.11.4" },
+]
+
+[[package]]
+name = "bex-hooks-python"
+version = "0.1.0"
+source = { editable = "hooks/bex-hooks/python" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "stdlibx-compose" },
+    { name = "stdlibx-option" },
+    { name = "stdlibx-result" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pydantic", specifier = ">=2.11.4" },
+    { name = "stdlibx-compose", specifier = ">=0.1.0,<1" },
+    { name = "stdlibx-option", specifier = ">=0.1.0,<1" },
+    { name = "stdlibx-result", specifier = ">=0.1.0,<1" },
 ]
 
 [[package]]

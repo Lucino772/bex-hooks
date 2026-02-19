@@ -32,6 +32,7 @@ module-name = "bex_hooks.exec"
 [tool.uv.workspace]
 members = [
     "hooks/bex-hooks/files",
+    "hooks/bex-hooks/python",
 ]
 
 [tool.ruff]
