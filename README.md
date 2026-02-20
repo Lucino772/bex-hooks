@@ -73,14 +73,14 @@ The following options are defined by the entrypoint. They are set internally by 
 
 | Command  | Usage                            | Description                                                                                            |
 | -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `run`    | `bex run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment.               |
-| `shell`  | `bex shell`                      | Executes the workflow, then opens an interactive shell using the resulting environment.                |
-| `export` | `bex export`                     | Executes the workflow and prints the resulting context as JSON (`working_dir`, `metadata`, `environ`). |
+| `run`    | `bex exec run -- <command> [args...]` | Executes the workflow, then runs the specified command within the resulting environment.               |
+| `shell`  | `bex exec shell`                      | Executes the workflow, then opens an interactive shell using the resulting environment.                |
+| `export` | `bex exec export`                     | Executes the workflow and prints the resulting context as JSON (`working_dir`, `metadata`, `environ`). |
 
 Command arguments for `run` support templating using metadata produced by the entrypoint:
 
 ```bash
-bex run -- echo "{working_dir}"
+bex exec run -- echo "{working_dir}"
 ```
 
 ## Configuration
