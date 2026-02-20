@@ -83,7 +83,10 @@ def archive(
                         has_single_toplevel = False
 
                     _members = archive.infolist()
-                    task_id = pb.add_task("Extracting {}".format(target.relative_to(ctx.working_dir)), total=len(_members))
+                    task_id = pb.add_task(
+                        "Extracting {}".format(target.relative_to(ctx.working_dir)),
+                        total=len(_members),
+                    )
                     for member in _members:
                         token.raise_if_cancelled()
 
