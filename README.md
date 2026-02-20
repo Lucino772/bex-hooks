@@ -14,14 +14,14 @@
 
 ## Usage
 
-A workflow is defined in a single YAML file containing:
+`bex-hooks` is available on PyPI and is used as a `bex` entrypoint.
 
-1. A bootstrap header
-2. The entrypoint configuration
+### 1. Add `bex-hooks` to the bootstrap header
+
+In your workflow file, include `bex-hooks` in `requirements` and set the `entrypoint`:
 
 ```yaml
 # /// bootstrap
-# uv: "0.10.2"
 # requires-python: ">=3.11,<3.12"
 # requirements: |
 #   bex-hooks
@@ -29,7 +29,13 @@ A workflow is defined in a single YAML file containing:
 #   bex-hooks-python
 # entrypoint: bex_hooks.exec:main
 # ///
+```
 
+### 2. Configure plugins and hooks
+
+Below the header, configure which plugins to load and which hooks to run:
+
+```yaml
 config:
   plugins:
     - bex_hooks.hooks.python
@@ -46,15 +52,6 @@ hooks:
     requirements: |
       requests>=2,<3
 ```
-
-The bootstrap header is processed by **`bex`**, not by this entrypoint.
-
-For this entrypoint, the bootstrap section must:
-
-* Include `bex-hooks` in `requirements`
-* Set `entrypoint` to `bex_hooks.exec:main`
-
-After the environment is bootstrapped, the entrypoint reads the YAML body (`config` and `hooks`) and executes the defined hooks in declaration order.
 
 ## CLI
 
