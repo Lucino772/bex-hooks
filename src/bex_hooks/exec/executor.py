@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import platform
 import time
 from typing import TYPE_CHECKING, Any
@@ -31,12 +32,14 @@ def execute(
     environ: MutableMapping[str, str],
     env: Environment,
 ) -> Result[ContextLike, Exception]:
+    logger = logging.getLogger("bex_hooks.executor")
+
     match result.collect_all(
         flow(
             plugin_from_entrypoint(_plugin),
-            result.inspect(lambda _: ui.print(f"[+] Imported plugin '{_plugin}'")),
+            result.inspect(lambda _: logger.info("Imported plugin '%s'", _plugin)),
             result.inspect_err(
-                lambda _: ui.print(f"[+] Failed to import plugin '{_plugin}'")
+                lambda _: logger.error("Failed to import plugin '%s'", _plugin)
             ),
         )
         for _plugin in env.config.plugins
@@ -49,7 +52,7 @@ def execute(
     hooks: MutableMapping[str, HookFunc] = {}
     for plugin in plugins:
         hooks.update(plugin.hooks)
-        ui.print(f"[+] Loaded hooks from plugin '{plugin.name}'")
+        logger.info("Loaded hooks from plugin '%s'", plugin.name)
 
     cel_ctx = cel.Context()
     return functools.reduce(
@@ -94,7 +97,7 @@ def _execute_hook(
         ),
     ):
         case Ok(skip_hook) if skip_hook is True:
-            ui.print(f"[-] Hook skipped: '{hook.id}'")
+            ui.print(f"Hook skipped: '{hook.id}'")
             return Ok(ctx)
         case Error(_) as err:
             return Error(err.error)
@@ -108,17 +111,17 @@ def _execute_hook(
         case Nothing():
             return Error(Exception(f"Hook '{hook.id}' does not exists"))
 
-    ui.print(f"[+] Running hook '{hook.id}'")
+    ui.print(f"Running hook '{hook.id}'")
     start_time = time.perf_counter()
     try:
         hook_result = hook_func(token, hook.__pydantic_extra__, ctx, ui=ui)
     except Exception as e:
         duration = time.perf_counter() - start_time
         ui.print(
-            f"[!] Hook failed to run: '{hook.id}' ({duration:.2f}s)",  # style="red"
+            f"Hook failed to run: '{hook.id}' ({duration:.2f}s)",  # style="red"
         )
         return Error(e)
     else:
         duration = time.perf_counter() - start_time
-        ui.print(f"[+] Hook ran successfully: '{hook.id}' ({duration:.2f}s)")
+        ui.print(f"Hook ran successfully: '{hook.id}' ({duration:.2f}s)")
         return Ok(hook_result)
