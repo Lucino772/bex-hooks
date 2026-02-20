@@ -2,11 +2,35 @@
 
 Python-related hooks for **bex**. This package provides hooks to create and manage Python virtual environments and their dependencies.
 
-## `python/setup-python`
+## Usage
+`bex-hooks-python` is available on PyPI.
+
+Add the plugin package to the `requirements` section of your `bex` bootstrap header:
+
+```yaml
+# /// bootstrap
+# requires-python: ">=3.11,<3.12"
+# requirements: |
+#   bex-hooks
+#   bex-hooks-python
+# entrypoint: bex_hooks.exec:main
+# ///
+```
+
+Then enable the plugin in your configuration:
+```yaml
+config:
+  plugins:
+    - bex_hooks.hooks.python
+```
+
+## Hooks
+
+### `python/setup-python`
 
 Sets up a Python virtual environment for a specified version and synchronizes its dependencies using `uv`. When both `requirements` and `requirements_file` are provided, their contents are merged into a single set of requirements.
 
-### Arguments
+#### Arguments
 
 | Name                | Type          |    Default   | Description                                                                                             |
 |---------------------|---------------|:------------:|---------------------------------------------------------------------------------------------------------|
@@ -18,7 +42,7 @@ Sets up a Python virtual environment for a specified version and synchronizes it
 | `set_python_path`   | `bool`        | `False`      | If `True`, sets `PYTHONPATH` to the virtual environment.                                                |
 | `inexact`           | `bool`        | `False`      | If `True`, tells `uv` not to remove dependencies that are present but not declared in the requirements. |
 
-### Example
+#### Example
 
 ```yaml
 hooks:

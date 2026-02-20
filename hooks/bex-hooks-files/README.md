@@ -2,11 +2,34 @@
 
 File-related hooks for **bex**. This package provides hooks to download, extract, and generate files.
 
-## `files/archive`
+## Usage
+`bex-hooks-files` is available on PyPI.
+
+Add the plugin package to the `requirements` section of your `bex` bootstrap header:
+
+```yaml
+# /// bootstrap
+# requires-python: ">=3.11,<3.12"
+# requirements: |
+#   bex-hooks
+#   bex-hooks-files
+# entrypoint: bex_hooks.exec:main
+# ///
+```
+
+Then enable the plugin in your configuration:
+```yaml
+config:
+  plugins:
+    - bex_hooks.hooks.files
+```
+
+## Hooks
+### `files/archive`
 
 Downloads an archive (zip or tar, including compressed variants) from a source URL and extracts it to a target directory.
 
-### Arguments
+#### Arguments
 
 | Name          | Type   |    Default   | Description                                                             |
 |---------------|--------|:------------:|-------------------------------------------------------------------------|
@@ -16,7 +39,7 @@ Downloads an archive (zip or tar, including compressed variants) from a source U
 | `format`      | `str`  | *(required)* | Archive format (e.g. `zip`, `tar`, `tar.gz`, `tar.xz`).                 |
 | `keep_source` | `bool` | `True`       | If `False`, removes the downloaded archive after extraction.            |
 
-### Example
+#### Example
 
 ```yaml
 hooks:
@@ -28,11 +51,11 @@ hooks:
     keep_source: false
 ```
 
-## `files/download`
+### `files/download`
 
 Downloads a file from a source URL to a target path.
 
-### Arguments
+#### Arguments
 
 | Name          | Type   |    Default   | Description                                                             |
 |---------------|--------|:------------:|-------------------------------------------------------------------------|
@@ -41,7 +64,7 @@ Downloads a file from a source URL to a target path.
 | `target`      | `str`  | *(required)* | Destination file path.                                                  |
 | `keep_source` | `bool` | `True`       | If `False`, removes the downloaded file after processing.               |
 
-### Example
+#### Example
 
 ```yaml
 hooks:
@@ -51,18 +74,18 @@ hooks:
     target: ./bin/tool.bin
 ```
 
-## `files/inline`
+### `files/inline`
 
 Creates a file at the specified target path using inline content.
 
-### Arguments
+#### Arguments
 
 | Name      | Type  |    Default   | Description            |
 |-----------|-------|:------------:|------------------------|
 | `content` | `str` | *(required)* | File contents.         |
 | `target`  | `str` | *(required)* | Destination file path. |
 
-### Example
+#### Example
 
 ```yaml
 hooks:
