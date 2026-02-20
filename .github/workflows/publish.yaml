@@ -1,0 +1,21 @@
+name: Publish Packages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11.14"
+          version: "0.9.28"
+      - name: Build all packages
+        run: uv build --all-packages
+      - name: Publish all packages
+        run: uv publish --trusted-publishing always
