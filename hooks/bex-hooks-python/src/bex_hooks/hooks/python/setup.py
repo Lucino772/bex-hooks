@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import glob
 import itertools
+import logging
 import platform
 import stat
 import subprocess
@@ -13,7 +14,7 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 import httpx
@@ -55,17 +56,10 @@ def setup_python(
     root_dir = Path(ctx.working_dir) / "python"
     root_dir.mkdir(exist_ok=True)
 
-    with ui.progress() as pb:
-        task_id = pb.add_task("Downloading uv")
-        uv = _download_uv(
-            token,
-            lambda curr, total: pb.update(task_id, total=total, completed=curr),
-            bex_dir / "cache" / "uv",
-            version=data.uv_version,
-        )
-        if uv is None:
-            msg = "Failed to download uv"
-            raise RuntimeError(msg)
+    uv = _download_uv(token, ui, bex_dir / "cache" / "uv", version=data.uv_version)
+    if uv is None:
+        msg = "Failed to download uv"
+        raise RuntimeError(msg)
 
     req_files = list(
         itertools.chain(
@@ -140,6 +134,8 @@ def _create_isolated_environment(
     inexact: bool,  # noqa: FBT001
     ui: UI,
 ):
+    logger = logging.getLogger("bex_hooks.hooks.python")
+
     venv_dir = root_dir / ".venv"
     requirements_in = root_dir / "requirements.in"
     requirements_txt = root_dir / "requirements.txt"
@@ -148,93 +144,103 @@ def _create_isolated_environment(
         / ("Scripts" if platform.system() == "Windows" else "bin")
         / ("python.exe" if platform.system() == "Windows" else "python")
     )
-
-    create_venc_rc = wait_process(
-        token,
-        [
-            str(uv_bin),
-            "venv",
-            "--allow-existing",
-            "--no-project",
-            "--seed",
-            "--python",
-            python_specifier,
-            "--python-preference",
-            "only-managed",
-            str(venv_dir),
-        ],
-        callback=lambda line: ui.log(line),
-    )
-    if create_venc_rc != 0:
-        return None
-
-    full_requirements = requirements
-    for file in req_files:
-        full_requirements += "\n" + Path(file).read_text()
-
-    requirements_in.write_bytes(
-        Template(full_requirements)
-        .substitute(
-            {
-                "working_dir": ctx.working_dir,
-                "metadata": ctx.metadata,
-                "environ": ctx.environ,
-            }
+    with ui.scope("[not dim]Updating virtual environment[/not dim]"):
+        create_venc_rc = wait_process(
+            token,
+            [
+                str(uv_bin),
+                "venv",
+                "--allow-existing",
+                "--no-project",
+                "--seed",
+                "--python",
+                python_specifier,
+                "--python-preference",
+                "only-managed",
+                str(venv_dir),
+            ],
+            callback=logger.debug,
         )
-        .encode("utf-8")
-    )
+        if create_venc_rc != 0:
+            return None
 
-    lock_pip_requirements_rc = wait_process(
-        token,
-        [
-            str(uv_bin),
-            "pip",
-            "compile",
-            "--python",
-            str(python_bin),
-            "--emit-index-url",
-            str(requirements_in),
-            "-o",
-            str(requirements_txt),
-        ],
-        callback=lambda line: ui.log(line),
-    )
-    if lock_pip_requirements_rc != 0:
-        return None
+        logger.info("Refreshed virtual environment")
 
-    sync_pip_requirements_rc = wait_process(
-        token,
-        [
-            str(uv_bin),
-            "pip",
-            "install",
-            "--python",
-            str(python_bin),
-        ]
-        + (["--exact"] if inexact is False else [])
-        + [
-            "-r",
-            str(requirements_txt),
-        ],
-        callback=lambda line: ui.log(line),
-    )
-    if sync_pip_requirements_rc != 0:
-        return None
+        full_requirements = requirements
+        for file in req_files:
+            full_requirements += "\n" + Path(file).read_text()
+
+        requirements_in.write_bytes(
+            Template(full_requirements)
+            .substitute(
+                {
+                    "working_dir": ctx.working_dir,
+                    "metadata": ctx.metadata,
+                    "environ": ctx.environ,
+                }
+            )
+            .encode("utf-8")
+        )
+
+        lock_pip_requirements_rc = wait_process(
+            token,
+            [
+                str(uv_bin),
+                "pip",
+                "compile",
+                "--python",
+                str(python_bin),
+                "--emit-index-url",
+                str(requirements_in),
+                "-o",
+                str(requirements_txt),
+            ],
+            callback=logger.debug,
+        )
+        if lock_pip_requirements_rc != 0:
+            return None
+
+        logger.info("Locked dependencies")
+
+        sync_pip_requirements_rc = wait_process(
+            token,
+            [
+                str(uv_bin),
+                "pip",
+                "install",
+                "--python",
+                str(python_bin),
+            ]
+            + (["--exact"] if inexact is False else [])
+            + [
+                "-r",
+                str(requirements_txt),
+            ],
+            callback=logger.debug,
+        )
+        if sync_pip_requirements_rc != 0:
+            return None
+
+        logger.info("Synced dependencies")
 
     return python_bin
 
 
 def _download_uv(
     token: CancellationToken,
-    report_hook: Callable[[int, int], None],
+    ui: UI,
     directory: Path,
     *,
     version: str | None = None,
 ):
+    logger = logging.getLogger("bex_hooks.hooks.python")
+
     if version is None:
         version = _get_uv_latest_version()
     if version is None:
         return None
+
+    logger.info("Resolved uv version to %s", version)
 
     exe = ".exe" if sys.platform == "win32" else ""
     uv_bin = directory / f"uv-{version}{exe}"
@@ -245,11 +251,16 @@ def _download_uv(
     if filename is None or target is None:
         return None
 
-    temp_filename = download_file(
-        token,
-        urljoin(_UV_DOWNLOAD_URL.format(version=version), filename),
-        report_hook=report_hook,
-    )
+    with ui.progress() as pb:
+        task_id = pb.add_task(f"Downloading uv {version}")
+        temp_filename = download_file(
+            token,
+            urljoin(_UV_DOWNLOAD_URL.format(version=version), filename),
+            report_hook=lambda curr, total: pb.update(
+                task_id, total=total, completed=curr
+            ),
+        )
+
     try:
         if filename.endswith(".zip"):
             with (

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from bex_hooks.hooks.files.utils import EtaCalculator, download_file
+from bex_hooks.hooks.files.utils import download_file
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -44,19 +44,20 @@ def archive(
         Path(ctx.working_dir) / ".bex" / "cache" / "files" / hash_algo / hash_hex
     )
     if cached_file.exists() and cached_file.is_file():
-        ui.log("Using {}".format(cached_file))
+        ui.print("Using {}".format(cached_file))
         filename = cached_file
     else:
-        eta = EtaCalculator()
-        filename = download_file(
-            token,
-            data.source,
-            report_hook=lambda _bytes, total: ui.log(
-                "Downloading file ({:.2f}) [{}]".format(
-                    (_bytes / total) * 100, eta.eta(_bytes, total)
-                )
-            ),
-        )
+        with ui.progress() as pb:
+            task_id = pb.add_task(
+                "Downloading {}".format(target.relative_to(ctx.working_dir))
+            )
+            filename = download_file(
+                token,
+                data.source,
+                report_hook=lambda completed, total: pb.update(
+                    task_id, completed=completed, total=total if total > 0 else None
+                ),
+            )
 
     _path = Path(filename)
     if hash_hex != hashlib.new(hash_algo, _path.read_bytes()).hexdigest():
@@ -65,46 +66,46 @@ def archive(
 
     # TODO: Don't extract if file has not changed
     try:
-        if data.format_ == "zip":
-            with zipfile.ZipFile(filename) as archive:
-                has_single_toplevel = True
-                if not enforce_toplevel or (
-                    len(
-                        {
-                            Path(name).parts[0]
-                            for name in archive.namelist()
-                            if not name.startswith("__MACOSX")
-                        }
-                    )
-                    > 1
-                ):
-                    has_single_toplevel = False
+        with ui.progress() as pb:
+            if data.format_ == "zip":
+                with zipfile.ZipFile(filename) as archive:
+                    has_single_toplevel = True
+                    if not enforce_toplevel or (
+                        len(
+                            {
+                                Path(name).parts[0]
+                                for name in archive.namelist()
+                                if not name.startswith("__MACOSX")
+                            }
+                        )
+                        > 1
+                    ):
+                        has_single_toplevel = False
 
-                _members = archive.infolist()
-                for idx, member in enumerate(_members, start=1):
-                    token.raise_if_cancelled()
+                    _members = archive.infolist()
+                    task_id = pb.add_task("Extracting {}".format(target.relative_to(ctx.working_dir)), total=len(_members))
+                    for member in _members:
+                        token.raise_if_cancelled()
 
-                    member_path = Path(member.filename)
-                    relative_path = (
-                        Path(*member_path.parts[1:])
-                        if has_single_toplevel
-                        else member_path
-                    )
-                    target_path = (Path(target) / relative_path).resolve()
-                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                        member_path = Path(member.filename)
+                        relative_path = (
+                            Path(*member_path.parts[1:])
+                            if has_single_toplevel
+                            else member_path
+                        )
+                        target_path = (Path(target) / relative_path).resolve()
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
 
-                    if member.is_dir():
-                        target_path.mkdir(parents=True, exist_ok=True)
-                    else:
-                        with (
-                            archive.open(member) as source,
-                            open(target_path, "wb") as target_file,
-                        ):
-                            target_file.write(source.read())
+                        if member.is_dir():
+                            target_path.mkdir(parents=True, exist_ok=True)
+                        else:
+                            with (
+                                archive.open(member) as source,
+                                open(target_path, "wb") as target_file,
+                            ):
+                                target_file.write(source.read())
 
-                    ui.log(
-                        "[{:.2f}] - {}".format((idx / len(_members), 2), target_path)
-                    )
+                        pb.advance(task_id, 1)
     finally:
         if _path.exists() and data.keep_source is True:
             cached_file.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +141,7 @@ def download(
         target.exists()
         and hashlib.new(hash_algo, target.read_bytes()).hexdigest() == hash_hex
     ):
-        ui.log("File already exists {}".format(target))
+        ui.print("Skipping, file already exists {}".format(target))
         return ctx
 
     cached_file = (
@@ -157,8 +158,8 @@ def download(
             filename = download_file(
                 token,
                 data.source,
-                report_hook=lambda _bytes, total: pb.update(
-                    task_id, completed=_bytes, total=total if total > 0 else None
+                report_hook=lambda completed, total: pb.update(
+                    task_id, completed=completed, total=total if total > 0 else None
                 ),
             )
 
