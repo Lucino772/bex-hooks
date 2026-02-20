@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -67,12 +68,20 @@ def callback(
             envvar="BEX_DIRECTORY",
         ),
     ] = None,
+    verbosity: Annotated[
+        int, typer.Option("--verbose", "-v", count=True, envvar="BEX_VERBOSITY")
+    ] = 0,
 ):
     ctx.ensure_object(dict)
     console = Console()
 
     match load_config(Path(os.getcwd()) if directory is None else directory, file):
         case Ok(env):
+            ctx.obj["log_level"] = {
+                0: logging.WARN,
+                1: logging.INFO,
+                2: logging.DEBUG,
+            }.get(verbosity, logging.DEBUG)
             ctx.obj["console"] = console
             ctx.obj["env"] = env
         case Error(err):
@@ -92,14 +101,13 @@ def run(ctx: typer.Context, command: list[str]):
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
-    with console.status("Executing environment"):
-        exec_result = execute(
-            token,
-            CliUI(console),
-            {},
-            dict(os.environ),
-            ctx.obj["env"],
-        )
+    exec_result = execute(
+        token,
+        CliUI(console, log_level=ctx.obj["log_level"]),
+        {},
+        dict(os.environ),
+        ctx.obj["env"],
+    )
 
     def _format_command(value: ContextLike, cmd: list[str]):
         try:
@@ -151,14 +159,13 @@ def shell(ctx: typer.Context):
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
-    with console.status("Executing environment"):
-        exec_result = execute(
-            token,
-            CliUI(console),
-            {},
-            dict(os.environ),
-            ctx.obj["env"],
-        )
+    exec_result = execute(
+        token,
+        CliUI(console, log_level=ctx.obj["log_level"]),
+        {},
+        dict(os.environ),
+        ctx.obj["env"],
+    )
 
     match exec_result:
         case Ok(value):
@@ -195,14 +202,13 @@ def export(ctx: typer.Context):
     signal.signal(signal.SIGTERM, lambda _, __: cancel())
     signal.signal(signal.SIGINT, lambda _, __: cancel())
 
-    with console.status("Executing environment"):
-        exec_result = execute(
-            token,
-            CliUI(console),
-            {},
-            dict(os.environ),
-            ctx.obj["env"],
-        )
+    exec_result = execute(
+        token,
+        CliUI(console, log_level=ctx.obj["log_level"]),
+        {},
+        dict(os.environ),
+        ctx.obj["env"],
+    )
 
     match exec_result:
         case Ok(value):
