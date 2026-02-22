@@ -1,6 +1,6 @@
 [project]
 name = "bex-hooks"
-version = "0.1.0"
+version = "0.1.1"
 description = "bex-hooks"
 readme = "README.md"
 license = "MIT"

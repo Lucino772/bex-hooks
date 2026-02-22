@@ -42,7 +42,7 @@ wheels = [
 
 [[package]]
 name = "bex-hooks"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "common-expression-language" },
@@ -94,7 +94,7 @@ requires-dist = [
 
 [[package]]
 name = "bex-hooks-python"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "hooks/bex-hooks-python" }
 dependencies = [
     { name = "httpx" },
