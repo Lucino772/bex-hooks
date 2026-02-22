@@ -13,10 +13,10 @@ import shellingham
 import typer
 from rich.console import Console
 from rich.traceback import Traceback
+from stdlibx import result
 from stdlibx.cancel import CancellationTokenCancelledError, default_token, with_cancel
 from stdlibx.compose import flow
-from stdlibx.result import Error, Ok, as_result
-from stdlibx.result import fn as result
+from stdlibx.result.types import Error, Ok
 
 from bex_hooks.exec.config import load_config
 from bex_hooks.exec.executor import execute
@@ -118,7 +118,7 @@ def run(ctx: typer.Context, command: list[str]):
     match flow(
         exec_result,
         result.map_(lambda val: (val,)),
-        result.zipped(as_result(lambda value: _format_command(value, command))),
+        result.zipped(result.safe(lambda value: _format_command(value, command))),
     ):
         case Ok((value, cmd)):
             console.print("Executed environment successfully", style="green")

@@ -2,32 +2,32 @@ from __future__ import annotations
 
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from ruamel.yaml import YAML
+from stdlibx import option, result
 from stdlibx.compose import flow
-from stdlibx.option import fn as option
-from stdlibx.option import optional_of
-from stdlibx.result import Ok, Result, as_result, result_of
-from stdlibx.result import fn as result
 
 from bex_hooks.exec.errors import BexExecError
+
+if TYPE_CHECKING:
+    from stdlibx.result.types import Result
 
 
 def load_config(directory: Path | None, filename: Path | None):
     _directory = flow(
-        optional_of(lambda: directory),
-        option.map_or_else(lambda: result_of(Path.cwd), lambda val: Ok(val)),
+        option.maybe(lambda: directory),
+        option.map_or_else(lambda: result.try_(Path.cwd), lambda val: result.ok(val)),
     )
 
     _file = flow(
-        optional_of(lambda: filename),
+        option.maybe(lambda: filename),
         option.map_or_else(
             lambda: flow(
                 _directory,
                 result.and_then(
-                    as_result(
+                    result.safe(
                         lambda dir_: _get_next_candidate(dir_, {"bex.yaml", "bex.yml"})
                     )
                 ),
@@ -39,7 +39,7 @@ def load_config(directory: Path | None, filename: Path | None):
                     )
                 ),
             ),
-            lambda val: Ok(val),
+            lambda val: result.ok(val),
         ),
     )
 
@@ -57,8 +57,8 @@ def _get_next_candidate(directory: Path, candidates: set[str]) -> Path:
 
 def _parse_config(directory: Path, file: Path) -> Result[Environment, Exception]:
     return flow(
-        result_of(file.read_text),
-        result.and_then(as_result(YAML(typ="safe").load)),
+        result.try_(file.read_text),
+        result.and_then(result.safe(YAML(typ="safe").load)),
         result.map_(
             lambda data: {
                 **data,
@@ -67,7 +67,7 @@ def _parse_config(directory: Path, file: Path) -> Result[Environment, Exception]
             }
         ),
         result.and_then(
-            as_result(partial(Environment.model_validate, from_attributes=False))
+            result.safe(partial(Environment.model_validate, from_attributes=False))
         ),
     )
 

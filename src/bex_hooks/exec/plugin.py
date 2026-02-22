@@ -6,15 +6,14 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Mapping
 
+from stdlibx import option, result
 from stdlibx.compose import flow, pipe
-from stdlibx.option import fn as option
-from stdlibx.option import optional_of
-from stdlibx.result import Error, Ok, Result, as_result, result_of
-from stdlibx.result import fn as result
 
 from bex_hooks.exec.errors import BexPluginError
 
 if TYPE_CHECKING:
+    from stdlibx.result.types import Result
+
     from bex_hooks.exec._interface import HookFunc
 
 _ENTRYPOINT_PATTERN = re.compile(
@@ -41,18 +40,18 @@ def plugin_from_entrypoint(entrypoint: str):
                 return error
 
     return flow(
-        result_of(_ENTRYPOINT_PATTERN.match, entrypoint),
+        result.try_(_ENTRYPOINT_PATTERN.match, entrypoint),
         result.and_then(
             lambda match: (
-                Ok[re.Match[str], Exception](match)
+                result.ok(match)
                 if match is not None
-                else Error[re.Match[str], Exception](
+                else result.error(
                     BexPluginError(f"Invalid plugin entrypoint format '{entrypoint}'")
                 )
             )
         ),
         result.and_then(
-            as_result(
+            result.safe(
                 lambda match_: functools.reduce(
                     getattr,
                     filter(None, (match_.group("attr") or "").split(".")),
@@ -62,7 +61,7 @@ def plugin_from_entrypoint(entrypoint: str):
         ),
         result.and_then(
             lambda module: result.collect(
-                Ok(getattr(module, "__plugin_name__", module.__name__)),
+                result.ok(getattr(module, "__plugin_name__", module.__name__)),
                 _load_hooks(module),
             )
         ),
@@ -73,11 +72,11 @@ def plugin_from_entrypoint(entrypoint: str):
 
 def _load_hooks(module: Any) -> Result[dict[str, HookFunc], Exception]:
     return flow(
-        optional_of(getattr, module, "get_hooks", None),
+        option.maybe(getattr, module, "get_hooks", None),
         option.map_or_else(
-            lambda: Ok({}),
+            lambda: result.ok({}),
             pipe(
-                as_result(lambda callback: callback()),
+                result.safe(lambda callback: callback()),
                 result.map_(lambda value: value if isinstance(value, dict) else {}),
             ),
         ),

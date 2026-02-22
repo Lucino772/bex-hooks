@@ -7,11 +7,11 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import cel
+from stdlibx import option, result
 from stdlibx.cancel import is_token_cancelled
 from stdlibx.compose import flow
-from stdlibx.option import Nothing, Some, optional_of
-from stdlibx.result import Error, Ok, Result, as_result, result_of
-from stdlibx.result import fn as result
+from stdlibx.option.types import Nothing, Some
+from stdlibx.result.types import Error, Ok, Result
 
 from bex_hooks.exec._interface import Context
 from bex_hooks.exec.plugin import plugin_from_entrypoint
@@ -47,7 +47,7 @@ def execute(
         case Ok(value):
             plugins = list(value)
         case Error(_) as err:
-            return Error(err.error)
+            return result.error(err.error)
 
     hooks: MutableMapping[str, HookFunc] = {}
     for plugin in plugins:
@@ -63,7 +63,7 @@ def execute(
             ),
         ),
         env.hooks,
-        Ok["ContextLike", Exception](
+        result.ok(
             Context(
                 working_dir=str(env.directory),
                 metadata={
@@ -86,9 +86,9 @@ def _execute_hook(
     cel_ctx: cel.Context,
 ) -> Result[ContextLike, Exception]:
     match flow(
-        result_of(lambda: cel_ctx.update({**ctx.metadata, "env": ctx.environ})),
+        result.try_(lambda: cel_ctx.update({**ctx.metadata, "env": ctx.environ})),
         result.and_then(
-            as_result(
+            result.safe(
                 lambda _: (
                     hook.if_ is not None
                     and bool(cel.evaluate(hook.if_, cel_ctx)) is False
@@ -98,18 +98,18 @@ def _execute_hook(
     ):
         case Ok(skip_hook) if skip_hook is True:
             ui.print(f"Hook skipped: '{hook.id}'")
-            return Ok(ctx)
+            return result.ok(ctx)
         case Error(_) as err:
-            return Error(err.error)
+            return result.error(err.error)
 
     if is_token_cancelled(token):
-        return Error(token.get_error())
+        return result.error(token.get_error())
 
-    match optional_of(hooks.get, hook.id):
+    match option.maybe(hooks.get, hook.id):
         case Some(func):
             hook_func = func
         case Nothing():
-            return Error(Exception(f"Hook '{hook.id}' does not exists"))
+            return result.error(Exception(f"Hook '{hook.id}' does not exists"))
 
     ui.print(f"Running hook '{hook.id}'")
     start_time = time.perf_counter()
@@ -120,8 +120,8 @@ def _execute_hook(
         ui.print(
             f"Hook failed to run: '{hook.id}' ({duration:.2f}s)",  # style="red"
         )
-        return Error(e)
+        return result.error(e)
     else:
         duration = time.perf_counter() - start_time
         ui.print(f"Hook ran successfully: '{hook.id}' ({duration:.2f}s)")
-        return Ok(hook_result)
+        return result.ok(hook_result)

@@ -11,8 +11,8 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.11.4",
     "stdlibx-compose>=0.1.0,<1",
-    "stdlibx-option>=0.1.0,<1",
-    "stdlibx-result>=0.1.0,<1",
+    "stdlibx-option==0.2.0",
+    "stdlibx-result==0.2.0",
 ]
 
 [tool.uv.build-backend]
